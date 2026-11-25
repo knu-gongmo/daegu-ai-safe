@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>대구 산단 AI 안전망 | 공장 관리자 대시보드</title>
+  <meta name="description" content="대구 산단 AI 안전망 구축 시범사업 - 공장 관리자용 상태 조회 화면 (시연용 프로토타입)">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="demo-banner">시연용 프로토타입입니다. 화면의 모든 수치는 가상 데이터이며 실제 공장과 연결되어 있지 않습니다.</div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">⚡</div>
+      <div>
+        <div class="brand-title">대구 산단 AI 안전망</div>
+        <div class="brand-sub">공장 관리자 대시보드</div>
+      </div>
+    </div>
+    <div class="factory">
+      <div class="factory-name" id="factoryName"></div>
+      <div class="factory-meta" id="factoryMeta"></div>
+    </div>
+    <div class="status-pill" id="liveStatus"><span class="dot"></span>실시간 수신 중</div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="home" role="tab">한눈에 보기</button>
+    <button class="tab" data-tab="energy" role="tab">전기 사용</button>
+    <button class="tab" data-tab="fire" role="tab">화재 감시</button>
+    <button class="tab" data-tab="machines" role="tab">설비 상태</button>
+    <button class="tab" data-tab="alerts" role="tab">알림 <span class="badge" id="alertBadge"></span></button>
+    <button class="tab" data-tab="report" role="tab">월간 리포트</button>
+  </nav>
+
+  <main>
+    <!-- 한눈에 보기 -->
+    <section class="panel active" id="tab-home">
+      <div class="kpis" id="kpis"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h2>이번 주 할 일</h2>
+            <span class="hint">AI가 측정값을 바탕으로 정리한 내용</span>
+          </div>
+          <ol class="todo" id="todoList"></ol>
+          <p class="note">문장은 생성형 AI가 작성하지만, 수치와 등급은 분석 모델이 계산한 값만 사용합니다.</p>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2>오늘 전기 사용 흐름</h2>
+            <span class="hint">메인 분전반 전류 · 10분 간격</span>
+          </div>
+          <canvas id="miniChart" height="210"></canvas>
+          <div class="legend" id="miniLegend"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>최근 알림</h2>
+          <button class="link" data-goto="alerts">전체 보기 →</button>
+        </div>
+        <div id="recentAlerts"></div>
+      </div>
+    </section>
+
+    <!-- 전기 사용 -->
+    <section class="panel" id="tab-energy">
+      <div class="card">
+        <div class="card-head">
+          <h2>24시간 전류와 AI 운전 상태 판정</h2>
+          <div class="seg" id="daySeg">
+            <button class="active" data-day="weekday">평일(오늘)</button>
+            <button data-day="holiday">지난 일요일</button>
+          </div>
+        </div>
+        <canvas id="energyChart" height="300"></canvas>
+        <div class="legend" id="energyLegend"></div>
+        <p class="note">AI(가우시안 혼합모형)가 전류 분포를 보고 <b>꺼짐 · 무부하 · 생산</b>을 자동으로 나눕니다. 설비마다 기준 전류를 사람이 정할 필요가 없습니다.</p>
+      </div>
+      <div class="grid-3" id="energyStats"></div>
+      <div class="card">
+        <div class="card-head"><h2>조업 외 시간 낭비가 큰 설비</h2><span class="hint">최근 7일</span></div>
+        <table class="table" id="wasteTable"></table>
+      </div>
+    </section>
+
+    <!-- 화재 감시 -->
+    <section class="panel" id="tab-fire">
+      <div class="grid-3" id="fireCards"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h2>주 차단기 단자 온도 (오늘)</h2><span class="hint">R · S · T상</span></div>
+          <canvas id="tempChart" height="260"></canvas>
+          <div class="legend" id="tempLegend"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>위험 판정 방식</h2></div>
+          <div class="rule">
+            <div class="rule-row"><span class="lv lv-ok">정상</span><span>아크 신호 없음, 단자 온도가 부하 전류로 설명되는 범위</span></div>
+            <div class="rule-row"><span class="lv lv-warn">주의</span><span>아크 신호 또는 온도 이상 중 <b>한쪽만</b> 확인 → 월간 리포트에 기록, 대행업체 점검 권고</span></div>
+            <div class="rule-row"><span class="lv lv-bad">위험</span><span>아크 신호와 온도 상승이 <b>함께</b> 확인 → 관리자·대행업체 즉시 알림, 소방에는 위치와 등급만 통보</span></div>
+          </div>
+          <h3 class="sub">이번 주 아크 감지 기록</h3>
+          <table class="table" id="arcTable"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 설비 상태 -->
+    <section class="panel" id="tab-machines">
+      <div class="machines" id="machineCards"></div>
+      <div class="card">
+        <div class="card-head"><h2 id="machineDetailTitle">설비 이상 점수 추이</h2><span class="hint">최근 8주 · 정상 데이터만으로 학습한 비지도 이상탐지</span></div>
+        <canvas id="machineChart" height="260"></canvas>
+        <p class="note" id="machineNote"></p>
+      </div>
+    </section>
+
+    <!-- 알림 -->
+    <section class="panel" id="tab-alerts">
+      <div class="card">
+        <div class="card-head">
+          <h2>알림 기록</h2>
+          <div class="seg" id="alertFilter">
+            <button class="active" data-lv="all">전체</button>
+            <button data-lv="bad">위험</button>
+            <button data-lv="warn">주의</button>
+            <button data-lv="info">안내</button>
+          </div>
+        </div>
+        <div id="alertList"></div>
+        <p class="note">현장 확인 결과는 AI 정확도 보정에 쓰입니다. 실제 이상이 아니었다면 '오경보'로 표시해 주세요.</p>
+      </div>
+    </section>
+
+    <!-- 월간 리포트 -->
+    <section class="panel" id="tab-report">
+      <div class="card report" id="reportCard"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div>대구 산단 AI 안전망 구축 시범사업 · 2026 대구 AI 드래프톤 [A-05] 달구벌 프렌즈</div>
+    <div>수집 항목: 전류 · 온도 · 센서 위치 (영상 · 음성 · 근로자 정보 수집 안 함) · 데이터는 사업장 관리자만 전체 조회</div>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
